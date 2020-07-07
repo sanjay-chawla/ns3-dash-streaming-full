@@ -1,1 +1,5 @@
 /.metadata/
+/test/*
+/test1/*
+/subdir1/*
+test/*
