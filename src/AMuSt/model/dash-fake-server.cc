@@ -382,6 +382,10 @@ DASHFakeServerApplication::StartApplication (void)
     std::string mmm = *it;
     std::string mpdData = ImportDASHRepresentations(mmm, video_id);
 
+    FILE *fp;
+    fp = fopen("output/lte/dualstripe/dummy_mpd.txt","w");
+    fprintf(fp,"Generated dummy mpd before compression: %s", mpdData.c_str());
+
     // compress
     std::string compressedMpdData = zlib_compress_string(mpdData);
     fprintf(stderr, "Size of compressed = %ld, uncompressed = %ld\n", compressedMpdData.length(), mpdData.length());

@@ -37,6 +37,7 @@ build-dir/
 build/
 /.cproject
 .project
+.cproject
 /.project
 
 # Ignore traces
@@ -48,4 +49,9 @@ build/
 *report*.csv
 animation.xml
 dash-log-files/
-server_throughput.csv
+
+.autotools
+.gitignore.save
+.settings/
+.externalToolBuilders/
+

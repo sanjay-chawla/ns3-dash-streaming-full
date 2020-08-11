@@ -86,6 +86,7 @@ main (int argc, char *argv[])
   // Enable necessary logs
   LogComponentEnable("LteTapVirtualDevices", LOG_LEVEL_ALL);
   LogComponentEnable("Ipv4UeListRouting", LOG_LEVEL_ALL);
+  LogComponentEnable("TraceHelper", LOG_LEVEL_ALL);
 
   // using more than 1 slows down things
   uint16_t numberOfEnbs = 1;
@@ -242,18 +243,20 @@ main (int argc, char *argv[])
   lteHelper->EnableTraces ();
 
   AsciiTraceHelper ascii;
-  p2ph.EnableAsciiAll (ascii.CreateFileStream ("lte-tap-virtual-device.tr"));
+  // p2ph.EnableAsciiAll (ascii.CreateFileStream ("lte-tap-virtual-device.tr"));
   p2ph.EnablePcapAll ("demo-lte");
-  Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds (5), ascii.CreateFileStream ("lteRoutingTable.txt"), Time::S);
+  // Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds (5), ascii.CreateFileStream ("lteRoutingTable.txt"), Time::S);
   
   // Installing bridges
   TapBridgeHelper tapBridgeClient;
-  tapBridgeClient.SetAttribute ("Mode", StringValue ("UseLocal"));
+  tapBridgeClient.SetAttribute ("Mode", StringValue ("UseBridge"));
+  tapBridgeClient.SetAttribute ("Mtu", StringValue ("1450"));
   tapBridgeClient.SetAttribute ("DeviceName", StringValue ("tap-left"));
   tapBridgeClient.Install (nodesLeft.Get (0), devicesLeft.Get (0));
 
   TapBridgeHelper tapBridgeServer;
-  tapBridgeServer.SetAttribute ("Mode", StringValue ("UseLocal"));
+  tapBridgeServer.SetAttribute ("Mode", StringValue ("UseBridge"));
+  tapBridgeServer.SetAttribute ("Mtu", StringValue ("1450"));
   tapBridgeServer.SetAttribute ("DeviceName", StringValue ("tap-right"));
   tapBridgeServer.Install (nodesRight.Get (1), devicesRight.Get (1));
 
