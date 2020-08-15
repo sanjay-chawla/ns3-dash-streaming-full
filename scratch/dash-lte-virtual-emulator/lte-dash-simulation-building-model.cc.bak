@@ -34,6 +34,10 @@
 #include <ns3/dash-http-client-helper.h>
 #include <ns3/netanim-module.h>
 #include <ns3/flow-monitor-helper.h>
+#include <ns3/csma-module.h>
+#include <ns3/tap-bridge-module.h>
+#include <ns3/mpi-interface.h>
+#include "ipv4-ue-list-routing-helper.h"
 #include <iomanip>
 #include <ios>
 #include <string>
@@ -411,7 +415,25 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
  int
  main (int argc, char *argv[])
  {
+
+  // Enable parallel simulator with the command line arguments
+  /*MpiInterface::Enable (&argc, &argv);
+
+  LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
+
+  uint32_t systemId = MpiInterface::GetSystemId ();
+  uint32_t systemCount = MpiInterface::GetSize ();
+
+  // Check for valid distributed parameters.
+  // Must have 2 and only 2 Logical Processors (LPs)
+  if (systemCount != 2)
+    {
+      std::cout << "This simulation requires 2 and only 2 logical processors." << std::endl;
+      return 1;
+    }
+	*/
    LogComponentEnable ("LenaDualStripeDashSimulation", LOG_LEVEL_ALL);
+   // LogComponentEnable("Ipv4UeListRouting", LOG_LEVEL_ALL);
    // LogComponentEnable ("PfFfMacScheduler", LOG_LEVEL_DEBUG);
    // LogComponentEnable ("DASHFakeServerApplication", LOG_LEVEL_ALL);
    // LogComponentEnable ("HttpServerApplication", LOG_LEVEL_ALL);
@@ -429,6 +451,14 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
 
    Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("100Gbps"));
    Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("5ms"));
+
+   // GlobalValue::Bind ("SimulatorImplementationType", StringValue ("ns3::RealtimeSimulatorImpl"));
+   // GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
+   Config::SetDefault("ns3::RealtimeSimulatorImpl::SynchronizationMode", StringValue("HardLimit"));
+   Config::SetDefault("ns3::RealtimeSimulatorImpl::HardLimit", TimeValue(Seconds(60)));
+
+   Config::SetDefault("ns3::CsmaChannel::DataRate", StringValue("100Gbps"));
+
 
    bool useCa = false;
    if (useCa)
@@ -571,7 +601,7 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
    lteHelper->SetPathlossModelAttribute ("ShadowSigmaIndoor", DoubleValue (1.5));
    // use always LOS model
    lteHelper->SetPathlossModelAttribute ("Los2NlosThr", DoubleValue (1e6));
-   lteHelper->SetSpectrumChannelType ("ns3::MultiModelSpectrumChannel");
+   // lteHelper->SetSpectrumChannelType ("ns3::MultiModelSpectrumChannel");
 
  //   lteHelper->EnableLogComponents ();
  //   LogComponentEnable ("PfFfMacScheduler", LOG_LEVEL_ALL);
@@ -701,6 +731,9 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
    Ptr<Node> remoteHost;
    NetDeviceContainer ueDevs;
 
+   NodeContainer nodesRight;
+   NodeContainer nodesLeft;
+
    if (epc)
      {
        NS_LOG_LOGIC ("setting up internet and remote host");
@@ -710,7 +743,21 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
        remoteHostContainer.Create (1);
        remoteHost = remoteHostContainer.Get (0);
        InternetStackHelper internet;
-       internet.Install (remoteHostContainer);
+       // internet.Install (remoteHostContainer);
+
+       nodesRight.Add (remoteHost);
+       nodesRight.Create (1);
+
+       // We need a custom route forwarding logic at host endpoints
+       // (PGW only forwards to UE as it doesn't know other networks)
+       Ipv4UeListRoutingHelper list;
+       list.Add (ipv4RoutingHelper, 0);
+
+
+       //InternetStackHelper internetRight;
+       internet.SetRoutingHelper(list);
+       internet.Install (nodesRight);
+       mobility.Install (nodesRight);
 
        // Create the Internet
        PointToPointHelper p2ph;
@@ -720,14 +767,21 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
        Ptr<Node> pgw = epcHelper->GetPgwNode ();
        NetDeviceContainer internetDevices = p2ph.Install (pgw, remoteHost);
        Ipv4AddressHelper ipv4h;
-       ipv4h.SetBase ("1.0.0.0", "255.0.0.0");
+       ipv4h.SetBase ("10.1.2.0", "255.255.255.0");
        Ipv4InterfaceContainer internetIpIfaces = ipv4h.Assign (internetDevices);
        // in this container, interface 0 is the pgw, 1 is the remoteHost
        remoteHostAddr = internetIpIfaces.GetAddress (1);
 
-       Ipv4StaticRoutingHelper ipv4RoutingHelper;
        Ptr<Ipv4StaticRouting> remoteHostStaticRouting = ipv4RoutingHelper.GetStaticRouting (remoteHost->GetObject<Ipv4> ());
        remoteHostStaticRouting->AddNetworkRouteTo (Ipv4Address ("7.0.0.0"), Ipv4Mask ("255.0.0.0"), 1);
+       remoteHostStaticRouting->AddNetworkRouteTo (Ipv4Address ("10.1.3.0"), Ipv4Mask ("255.255.255.0"), Ipv4Address ("10.1.3.2"), 2);
+       remoteHostStaticRouting->AddNetworkRouteTo (Ipv4Address ("10.1.1.0"), Ipv4Mask ("255.255.255.0"), epcHelper->GetUeDefaultGatewayAddress(), 1);
+
+       /*
+       Ptr<Ipv4StaticRouting> pgwStaticRouting = ipv4RoutingHelper.GetStaticRouting (pgw->GetObject<Ipv4> ());
+       pgwStaticRouting->AddNetworkRouteTo (Ipv4Address ("10.1.3.0"), Ipv4Mask ("255.255.255.0"), Ipv4Address ("10.1.2.2"), 3);
+       pgwStaticRouting->AddNetworkRouteTo (Ipv4Address ("10.1.1.0"), Ipv4Mask ("255.255.255.0"), Ipv4Address ("7.0.0.2"), 1); // TODO: replace with tapped UE address
+		*/
 
        // for internetworking purposes, consider together home UEs and macro UEs
        ues.Add (homeUes);
@@ -735,9 +789,18 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
        ueDevs.Add (homeUeDevs);
        ueDevs.Add (macroUeDevs);
 
+       //InternetStackHelper internetLeft;
+       //internetLeft.SetRoutingHelper(list);
+
        // Install the IP stack on the UEs
        internet.Install (ues);
        ueIpIfaces = epcHelper->AssignUeIpv4Address (NetDeviceContainer (ueDevs));
+
+       nodesLeft.Create (1);
+       nodesLeft.Add (ues.Get(0)); // UE to tap into
+
+       internet.Install (nodesLeft.Get(0));
+       mobility.Install (nodesLeft.Get(0));
 
        // attachment (needs to be done after IP stack configuration)
        // using initial cell selection
@@ -776,7 +839,6 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
        NS_LOG_LOGIC ("setting up applications");
 
        // Install and start applications on UEs and remote host
-       uint16_t port = 80;
        uint16_t dlPort = 10000;
        uint16_t ulPort = 20000;
 
@@ -852,15 +914,15 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
                    if (epcDl)
                      {
                        NS_LOG_LOGIC ("installing TCP DL app for UE " << u);
+						   std::stringstream ssMPDURL;
+							   //ssMPDURL << "http://" << remoteHostAddr << "/bbb/BigBuckBunny_15s_simple_2014_05_09.mpd";
+							ssMPDURL << "http://" << remoteHostAddr << "/DashWorkspace/bbb_15s/vid1.mpd.gz";
+							// NS_LOG_DEBUG(">>>>>>>>>>> add: " << ssMPDURL.str());
 
-                       std::stringstream ssMPDURL;
-						ssMPDURL << "http://" << remoteHostAddr << "/DashWorkspace/bbb_15s/vid1.mpd.gz";
-						// NS_LOG_DEBUG(">>>>>>>>>>> add: " << ssMPDURL.str());
-
-						clientApps.Add(GetDASHClientApplication(ssMPDURL.str(), ue, simTime, remoteHost->GetId()));
-
-
-						std::string representationStrings = GetCurrentWorkingDir() + "/../../DashWorkspace/bbb_15s/dash_dataset_avc_bbb.csv";
+							clientApps.Add(GetDASHClientApplication(ssMPDURL.str(), ue, simTime, remoteHost->GetId()));
+                    	   // do only once
+						 uint16_t port = 80;
+      	  	  	  	  	  std::string representationStrings = GetCurrentWorkingDir() + "/../../DashWorkspace/bbb_15s/dash_dataset_avc_bbb.csv";
 						fprintf(stderr, "representations = %s\n", representationStrings.c_str());
 						DASHServerHelper server(Ipv4Address::GetAny(), port,  "1.0.0.2", "/DashWorkspace/bbb_15s/", representationStrings, "/DashWorkspace/bbb_15s/");
 						serverApps = server.Install (remoteHost);
@@ -921,6 +983,7 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
                clientApps.Stop (Seconds(simTime));
              } // end for b
          }
+
          out_addr_file.flush();
          out_addr_file.close();
 
@@ -973,6 +1036,37 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
        Simulator::Stop (Seconds (simTime));
      }
 
+   CsmaHelper csmaServer;
+  csmaServer.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Gb/s")));
+  csmaServer.SetChannelAttribute ("Delay", TimeValue (Seconds (0.001)));
+  NetDeviceContainer devicesRight = csmaServer.Install (nodesRight);
+
+  Ipv4AddressHelper ipv4Right;
+ ipv4Right.SetBase ("10.1.3.0", "255.255.255.0");
+ Ipv4InterfaceContainer interfacesRight = ipv4Right.Assign (devicesRight);
+ NS_LOG_UNCOND("Installing Routing Tables");
+
+  CsmaHelper csmaClient;
+   csmaClient.SetChannelAttribute ("DataRate", DataRateValue (DataRate ("100Gb/s")));
+   csmaClient.SetChannelAttribute ("Delay", TimeValue (Seconds (0.001)));
+   NetDeviceContainer devicesLeft = csmaClient.Install (nodesLeft);
+
+  Ipv4AddressHelper ipv4Left;
+  ipv4Left.SetBase ("10.1.1.0", "255.255.255.0");
+  Ipv4InterfaceContainer interfacesLeft = ipv4Left.Assign (devicesLeft);
+
+  TapBridgeHelper tapBridgeServer;
+    tapBridgeServer.SetAttribute ("Mode", StringValue ("UseBridge"));
+    tapBridgeServer.SetAttribute ("Mtu", StringValue ("1446"));
+    tapBridgeServer.SetAttribute ("DeviceName", StringValue ("tap-right"));
+    tapBridgeServer.Install (nodesRight.Get (1), devicesRight.Get (1));
+
+  TapBridgeHelper tapBridgeClient;
+  tapBridgeClient.SetAttribute ("Mode", StringValue ("UseBridge"));
+  tapBridgeClient.SetAttribute ("Mtu", StringValue ("1446"));
+  tapBridgeClient.SetAttribute ("DeviceName", StringValue ("tap-left"));
+  tapBridgeClient.Install (nodesLeft.Get (0), devicesLeft.Get (0));
+
    Config::SetDefault("ns3::RadioBearerStatsCalculator::DlRlcOutputFilename", StringValue(outputDir + "DlRlcStats.txt"));
    Config::SetDefault("ns3::RadioBearerStatsCalculator::UlRlcOutputFilename" , StringValue(outputDir + "UlRlcStats.txt"));
    Config::SetDefault("ns3::RadioBearerStatsCalculator::DlPdcpOutputFilename", StringValue(outputDir + "DlPdcpStats.txt"));
@@ -990,6 +1084,7 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
    Config::SetDefault("ns3::PhyRxStatsCalculator::DlRxOutputFilename", StringValue(outputDir + "DlRxPhyStats.txt"));
    Config::SetDefault("ns3::PhyRxStatsCalculator::UlRxOutputFilename", StringValue(outputDir + "UlRxPhyStats.txt"));
 
+   /*
    lteHelper->EnablePhyTraces();
    lteHelper->EnableMacTraces ();
    lteHelper->EnableRlcTraces ();
@@ -1012,18 +1107,23 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
    anim->AddResource("");
    anim->SetBackgroundImage ("/home/sanjay/git/ns-3.30/netanim-bg-white.jpeg", -180, -80, 5, 8, 0.1);
 
+   AsciiTraceHelper ascii;
+   ipv4RoutingHelper.PrintRoutingTableAllAt(Seconds (5), ascii.CreateFileStream (outputDir + "lteRoutingTable.txt"), Time::S);
+	*/
    Simulator::Run ();
 
-   flowMon->SetAttribute("DelayBinWidth", DoubleValue(0.01));
-   flowMon->SetAttribute("JitterBinWidth", DoubleValue(0.01));
-   flowMon->SetAttribute("PacketSizeBinWidth", DoubleValue(1));
-   flowMon->CheckForLostPackets();
-   flowMon->SerializeToXmlFile(outputDir + "FlowMonitor.xml", true, true);
+   // flowMon->SetAttribute("DelayBinWidth", DoubleValue(0.01));
+   // flowMon->SetAttribute("JitterBinWidth", DoubleValue(0.01));
+   // flowMon->SetAttribute("PacketSizeBinWidth", DoubleValue(1));
+   // flowMon->CheckForLostPackets();
+   // flowMon->SerializeToXmlFile(outputDir + "FlowMonitor.xml", true, true);
 
    //GtkConfigStore config;
    //config.ConfigureAttributes ();
 
    lteHelper = 0;
    Simulator::Destroy ();
+   // Exit the MPI execution environment
+   // MpiInterface::Disable ();
    return 0;
  }

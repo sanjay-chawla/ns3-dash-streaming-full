@@ -34,7 +34,7 @@
  <default name="ns3::ZipfRandomVariable::Alpha" value="0"/>
  <default name="ns3::ZetaRandomVariable::Alpha" value="3.14"/>
  <default name="ns3::RealtimeSimulatorImpl::SynchronizationMode" value="BestEffort"/>
- <default name="ns3::RealtimeSimulatorImpl::HardLimit" value="+100000000.0ns"/>
+ <default name="ns3::RealtimeSimulatorImpl::HardLimit" value="+60000000000.0ns"/>
  <default name="ns3::IsotropicAntennaModel::Gain" value="0"/>
  <default name="ns3::CosineAntennaModel::Beamwidth" value="60"/>
  <default name="ns3::CosineAntennaModel::Orientation" value="0"/>
@@ -1273,19 +1273,19 @@
  <default name="ns3::HttpClientApplication::MultimediaConsumer::StartUpDelay" value="2"/>
  <default name="ns3::HttpClientApplication::MultimediaConsumer::UserId" value="0"/>
  <global name="SimulatorImplementationType" value="ns3::DefaultSimulatorImpl"/>
+ <global name="ChecksumEnabled" value="true"/>
  <global name="SchedulerType" value="ns3::MapScheduler"/>
  <global name="RngSeed" value="1"/>
  <global name="RngRun" value="1"/>
- <global name="ChecksumEnabled" value="false"/>
- <global name="nBlocks" value="20"/>
+ <global name="nBlocks" value="0"/>
  <global name="nApartmentsX" value="6"/>
  <global name="nFloors" value="3"/>
- <global name="nMacroEnbSites" value="7"/>
- <global name="nMacroEnbSitesX" value="2"/>
+ <global name="nMacroEnbSites" value="1"/>
+ <global name="nMacroEnbSitesX" value="1"/>
  <global name="interSiteDistance" value="500"/>
  <global name="areaMarginFactor" value="0.2"/>
- <global name="macroUeDensity" value="5e-06"/> <!-- change this to increase UEs for actual simulation -->
- <global name="homeEnbDeploymentRatio" value="1"/>
+ <global name="macroUeDensity" value="4e-05"/> <!-- change this to increase UEs for actual simulation -->
+ <global name="homeEnbDeploymentRatio" value="0"/>
  <global name="homeEnbActivationRatio" value="0"/>
  <global name="homeUesHomeEnbRatio" value="1"/>
  <global name="macroEnbTxPowerDbm" value="46"/>
@@ -1294,7 +1294,7 @@
  <global name="homeEnbDlEarfcn" value="100"/>
  <global name="macroEnbBandwidth" value="25"/>
  <global name="homeEnbBandwidth" value="25"/>
- <global name="simTime" value="240"/>
+ <global name="simTime" value="50"/> <!-- change this to increase simulation time -->
  <global name="generateRem" value="false"/>
  <global name="remRbId" value="-1"/>
  <global name="epc" value="true"/>

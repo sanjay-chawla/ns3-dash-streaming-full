@@ -85,8 +85,8 @@ main (int argc, char *argv[])
 {
   // Enable necessary logs
   LogComponentEnable("LteTapVirtualDevices", LOG_LEVEL_ALL);
-  LogComponentEnable("Ipv4UeListRouting", LOG_LEVEL_ALL);
-  LogComponentEnable("TraceHelper", LOG_LEVEL_ALL);
+  //LogComponentEnable("Ipv4UeListRouting", LOG_LEVEL_ALL);
+  //LogComponentEnable("TraceHelper", LOG_LEVEL_ALL);
 
   // using more than 1 slows down things
   uint16_t numberOfEnbs = 1;
@@ -240,11 +240,11 @@ main (int argc, char *argv[])
   Ipv4InterfaceContainer interfacesRight = ipv4Right.Assign (devicesRight);
   NS_LOG_UNCOND("Installing Routing Tables");
   
-  lteHelper->EnableTraces ();
+  // lteHelper->EnableTraces ();
 
-  AsciiTraceHelper ascii;
+  // AsciiTraceHelper ascii;
   // p2ph.EnableAsciiAll (ascii.CreateFileStream ("lte-tap-virtual-device.tr"));
-  p2ph.EnablePcapAll ("demo-lte");
+  //p2ph.EnablePcapAll ("demo-lte");
   // Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds (5), ascii.CreateFileStream ("lteRoutingTable.txt"), Time::S);
   
   // Installing bridges
@@ -263,10 +263,10 @@ main (int argc, char *argv[])
   //
   // Run the simulation for ten minutes
   //
-  Simulator::Stop (Seconds (600.));
+  /*Simulator::Stop (Seconds (600.));
   ns3::AnimationInterface *anim;
   anim = new AnimationInterface ("animation.xml");
-  anim->AddResource("");
+  anim->AddResource("");*/
     
   Simulator::Run ();
   Simulator::Destroy ();
