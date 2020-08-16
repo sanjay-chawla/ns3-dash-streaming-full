@@ -57,6 +57,8 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("LenaDualStripeDashSimulation");
 
+std::string outputDir;
+
 std::string GetCurrentWorkingDir( void ) {
   char buff[250];
   char* cwd = getcwd( buff, 250 );
@@ -97,7 +99,7 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
 	client.SetAttribute("DeviceType", StringValue(DeviceTypeArray[deviceConfig]));
 
 	ofstream request_file;
-	request_file.open("../content/requests/demo_req.csv", std::ios_base::app); // append instead of overwrite
+	request_file.open(outputDir + "/demo_req.csv", std::ios_base::app); // append instead of overwrite
 
 	request_file << ueNode->GetId() << "," << remoteHostId << "," << 2 << "," << simTime << "," << "0,3337" << "," << ScreenWidthArray[deviceConfig] << "," << ScreenHeightArray[deviceConfig] << "\n";
 	return client.Install(ueNode);
@@ -278,7 +280,6 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
          }
      }
  }
- std::string outputDir;
 
  static ns3::GlobalValue g_nBlocks ("nBlocks",
                                     "Number of femtocell blocks",
@@ -843,7 +844,7 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
        uint16_t ulPort = 20000;
 
        ofstream request_file;
-	   request_file.open("../content/requests/demo_req.csv", std::ios_base::out); // append instead of overwrite
+	   request_file.open(outputDir + "/demo_req.csv", std::ios_base::app); // append instead of overwrite
 	   request_file << "ClientNode,ServerNode,StartsAt,StopsAt,VideoId,LinkCapacity,ScreenWidth,ScreenHeight\n";
 	   request_file.close();
 
@@ -1084,7 +1085,6 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
    Config::SetDefault("ns3::PhyRxStatsCalculator::DlRxOutputFilename", StringValue(outputDir + "DlRxPhyStats.txt"));
    Config::SetDefault("ns3::PhyRxStatsCalculator::UlRxOutputFilename", StringValue(outputDir + "UlRxPhyStats.txt"));
 
-   /*
    lteHelper->EnablePhyTraces();
    lteHelper->EnableMacTraces ();
    lteHelper->EnableRlcTraces ();
@@ -1107,16 +1107,16 @@ ApplicationContainer GetDASHClientApplication (string ssMPDURL, Ptr<Node> ueNode
    anim->AddResource("");
    anim->SetBackgroundImage ("/home/sanjay/git/ns-3.30/netanim-bg-white.jpeg", -180, -80, 5, 8, 0.1);
 
-   AsciiTraceHelper ascii;
-   ipv4RoutingHelper.PrintRoutingTableAllAt(Seconds (5), ascii.CreateFileStream (outputDir + "lteRoutingTable.txt"), Time::S);
-	*/
+   //AsciiTraceHelper ascii;
+   //ipv4RoutingHelper.PrintRoutingTableAllAt(Seconds (5), ascii.CreateFileStream (outputDir + "lteRoutingTable.txt"), Time::S);
+
    Simulator::Run ();
 
-   // flowMon->SetAttribute("DelayBinWidth", DoubleValue(0.01));
-   // flowMon->SetAttribute("JitterBinWidth", DoubleValue(0.01));
-   // flowMon->SetAttribute("PacketSizeBinWidth", DoubleValue(1));
-   // flowMon->CheckForLostPackets();
-   // flowMon->SerializeToXmlFile(outputDir + "FlowMonitor.xml", true, true);
+   flowMon->SetAttribute("DelayBinWidth", DoubleValue(0.01));
+   flowMon->SetAttribute("JitterBinWidth", DoubleValue(0.01));
+   flowMon->SetAttribute("PacketSizeBinWidth", DoubleValue(1));
+   flowMon->CheckForLostPackets();
+   flowMon->SerializeToXmlFile(outputDir + "FlowMonitor.xml", true, true);
 
    //GtkConfigStore config;
    //config.ConfigureAttributes ();

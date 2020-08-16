@@ -2,11 +2,11 @@
 
 
 CONTENT="../../DashWorkspace/bbb_15s"
-REQUESTS="../content/requests"
-RESULTS="output/lte/dualstripe/results"
-DASH_REPORT="output/lte/dualstripe/report.csv"
-FLOWMON="output/lte/dualstripe/FlowMonitor.xml"
-ADDRESSES="output/lte/dualstripe/addresses"
+REQUESTS="output/lte/dualstripe/$1"
+RESULTS="output/lte/dualstripe/$1/results"
+DASH_REPORT="output/lte/dualstripe/$1/report.csv"
+FLOWMON="output/lte/dualstripe/$1/FlowMonitor.xml"
+ADDRESSES="output/lte/dualstripe/$1/addresses"
 
 QUANTILES=(0 5 10 25 50 75 90 95 100)
 
@@ -18,14 +18,10 @@ else
         mkdir $RESULTS
 fi
 
-min_rid=0
-if [ "$#" -eq 1 ];
-then
-	min_rid=1
-fi
-
-printf "Node,RequestDuration,TCPOutputPacket,TCPOutputDelay,TCPOutputJitter,TCPOutputPloss,TCPInputPacket,TCPInputDelay,TCPInputJitter,TCPInputPloss\n" >> $RESULTS/TcpStats.csv
+printf "Node,RequestDuration,TCPOutputPacket,TCPOutputDelay,TCPOutputJitter,TCPOutputPloss,TCPInputPacket,TCPInputDelay,TCPInputJitter\n" >> $RESULTS/TcpStats.csv
 printf "Node,StartUpDelay,AvgDownloadRate,StdDownloadRate,AvgBufferLevel,StdBufferLevel,StallEvents,RebufferingRatio,StallLabel,TotalStallingTime,AvgTimeStallingEvents,AvgVideoBitRate,AvgVideoQualityVariation,RSDVideoBitRate,AvgDownloadBitRate\n" >> $RESULTS/DashStats.csv
+
+min_rid=0
 
 #Read requests
 #source, server, startsAt, stopsAt, videoId, screenWidth, screenHeight
@@ -72,7 +68,7 @@ while IFS='' read -r line || [[ -n "$line" ]]; do
         TCPInputJitter=$(awk '{printf $15/$25/1000000}' $RESULTS/flowmonitor.tmp2)
         TCPInputPloss=$(awk '{printf ($23-$25)/$23}' $RESULTS/flowmonitor.tmp2)	
 
-	printf "$source,$RequestDuration,$TCPOutputPacket,$TCPOutputDelay,$TCPOutputJitter,$TCPOutputPloss,$TCPInputPacket,$TCPInputDelay,$TCPInputJitter,$TCPInputPloss\n" >> $RESULTS/TcpStats.csv
+	printf "$source,$RequestDuration,$TCPOutputPacket,$TCPOutputDelay,$TCPOutputJitter,$TCPOutputPloss,$TCPInputPacket,$TCPInputDelay,$TCPInputJitter\n" >> $RESULTS/TcpStats.csv
 	#####################################
 	# DASH Player statistics
 	#####################################
